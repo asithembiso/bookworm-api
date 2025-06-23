@@ -5,15 +5,17 @@ import protectRoute from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
+/**
+ * Creates a new book entry for the authenticated user, uploads image to Cloudinary.
+ */
 router.post("/", protectRoute, async (req, res) => {
     try {
         const {title, caption, rating, image} = req.body;
         if(!title || !caption || !rating || !image) return res.status(400).json({message: "Please provide all fields"});
-
-        // upload image to cloudinary
+        
         const uploadResponse = await cloudinary.uploader.upload(image);
         const imageUrl = uploadResponse.secure_url;
-        // save to the db
+     
         const newBook = new Book({
             title,
             caption,
@@ -30,7 +32,9 @@ router.post("/", protectRoute, async (req, res) => {
     }
 });
 
-
+/**
+ * Gets all books (paginated) for all users.
+ */
 router.get("/", protectRoute, async(req, res) => {
     try {
         const page = req.query.page || 1;
@@ -57,6 +61,9 @@ router.get("/", protectRoute, async(req, res) => {
     }
 });
 
+/**
+ * Gets all books for the authenticated user.
+ */
 router.get("/user", protectRoute, async(req, res) => {
     try {
         const books = await Book.find({user: req.user_id}).sort({createdAt: -1});
@@ -67,17 +74,18 @@ router.get("/user", protectRoute, async(req, res) => {
     }
 });
 
+/**
+ * Deletes a book by ID if the authenticated user owns it, and removes the image from Cloudinary.
+ */
 router.delete("/:id", protectRoute, async(req, res) => {
     try {
         const book = await Book.findById(req.params.id)
         if(!book) return res.status(400).json({message: "Book not found"});
 
-        // check if user owns book
         if(book.user.toString() !== req.user._id.toString()){
             return res.status(401).json({message: "Unathorized"});
         }
 
-        // delete from cloud
         if(book.image && book.image.includes("cloudinary")){
             try {
                 const publicId = book.image.split("/").pop().split(".")[0];
@@ -89,10 +97,9 @@ router.delete("/:id", protectRoute, async(req, res) => {
         await book.deleteOne();
         res.status(200).json({message: "Book deleted successfully"});
     } catch (error) {
-        
+        console.log("Error deleting book", error)
+        res.status(500).json({message: "Internal server error"})
     }
 });
-
-
 
 export default router;

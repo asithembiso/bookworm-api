@@ -4,10 +4,16 @@ import jwt from "jsonwebtoken";
 
 const router = express.Router();
 
+/**
+ * Generates a JWT token for a given user ID.
+ */
 const generateToken = (userId) => {
     return jwt.sign({userId}, process.env.JWT_SECRET, {expiresIn: "15d"})
 };
 
+/**
+ * Registers a new user, validates input, checks for duplicates, and returns a JWT token.
+ */
 router.post("/register", async (req, res) => {
     try {
         const {email, username, password} = req.body;
@@ -22,7 +28,6 @@ router.post("/register", async (req, res) => {
             return res.status(400).json({message: "Username should be at least 3 charecters long"});
         }
 
-        //check if user already exists
         const existingEmail = await User.findOne({email});
         if(existingEmail){
             return res.status(400).json({message: "Email already exist"});
@@ -32,7 +37,6 @@ router.post("/register", async (req, res) => {
             return res.status(400).json({message: "Username already exist"});
         }
 
-        // reandom avatar from dicebear
         const profileImage = `https://api.dicebear.com/9.x/avataaars/svg?seed=Luis`;
 
         const user = new User({
@@ -60,16 +64,17 @@ router.post("/register", async (req, res) => {
     }
 })
 
+/**
+ * Logs in a user by validating credentials and returns a JWT token.
+ */
 router.post("/login", async (req, res) => {
     try {
         const {email, password} = req.body;
         if(!email || !password) return res.status(400).json({message: "All fields required"});
 
-        // check if user exists
         const user = await User.findOne({email})
         if(!user) return res.status(400).json({message: "Invalid credentials"});
         
-        // check password
         const isPasswordCorrect = await user.comparePassword(password)
         if(!isPasswordCorrect) return res.status(400).json({message: "Invalid credentials"});
 
